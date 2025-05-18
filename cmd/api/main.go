@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gepestudy/go-rest-api/internal/api/middlewares"
+	mw "github.com/gepestudy/go-rest-api/internal/api/middlewares"
 )
 
 func main() {
@@ -39,7 +39,7 @@ func main() {
 	server := &http.Server{
 		Addr:      fmt.Sprintf(":%d", port),
 		TLSConfig: tslConfig,
-		Handler:   middlewares.SecurityHeaders(mux),
+		Handler:   mw.SecurityHeaders(mw.Cors(mux)),
 	}
 
 	fmt.Println("Starting server on port", port)
