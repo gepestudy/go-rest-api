@@ -1,0 +1,23 @@
+[req]
+default_bits       = 2048
+distinguished_name = req_distinguished_name
+req_extensions     = req_ext
+prompt             = no
+
+[req_distinguished_name]
+C  = ID
+ST = WEST JAVA
+L  = DEPOK
+O  = BelajarLokal  # Nama organisasi bisa disesuaikan
+OU = Development    # Unit organisasi bisa disesuaikan
+CN = localhost       # PENTING: Common Name harus sesuai dengan host yang Anda akses
+
+[req_ext]
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = localhost
+IP.1 = 127.0.0.1
+IP.2 = ::1           # Alamat IPv6 untuk localhost (opsional tapi baik)
+# Tambahkan IP lokal jaringan Anda jika perlu diakses dari perangkat lain di jaringan yang sama
+IP.3 = 192.168.1.100 # Contoh, sesuaikan dengan IP Anda
