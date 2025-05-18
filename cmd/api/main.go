@@ -39,7 +39,7 @@ func main() {
 	server := &http.Server{
 		Addr:      fmt.Sprintf(":%d", port),
 		TLSConfig: tslConfig,
-		Handler:   mw.SecurityHeaders(mw.Cors(mux)),
+		Handler:   mw.ResponseTime(mw.SecurityHeaders(mw.Cors(mux))),
 	}
 
 	fmt.Println("Starting server on port", port)
