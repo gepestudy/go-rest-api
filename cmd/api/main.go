@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	mw "github.com/gepestudy/go-rest-api/internal/api/middlewares"
 )
@@ -12,6 +13,8 @@ import (
 func main() {
 	cert := "cert.pem"
 	key := "key.pem"
+
+	rl := mw.NewRatelimiter(2, 5*time.Second)
 
 	port := 8080
 
@@ -39,7 +42,7 @@ func main() {
 	server := &http.Server{
 		Addr:      fmt.Sprintf(":%d", port),
 		TLSConfig: tslConfig,
-		Handler:   mw.ResponseTime(mw.SecurityHeaders(mw.Cors(mw.Compression(mux)))),
+		Handler:   rl.Middleware(mw.ResponseTime(mw.SecurityHeaders(mw.Cors(mw.Compression(mux))))),
 	}
 
 	fmt.Println("Starting server on port", port)
