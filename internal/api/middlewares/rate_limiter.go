@@ -38,7 +38,6 @@ func (rl *rateLimiter) resetVisitorCount() {
 		time.Sleep(rl.resetTime)
 		rl.mutex.Lock()
 		rl.visitor = make(map[string]int)
-		fmt.Println("visitor count cleared")
 		rl.mutex.Unlock()
 	}
 }
