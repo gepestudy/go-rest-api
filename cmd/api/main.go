@@ -8,9 +8,20 @@ import (
 
 	mw "github.com/gepestudy/go-rest-api/internal/api/middlewares"
 	"github.com/gepestudy/go-rest-api/internal/api/router"
+	"github.com/gepestudy/go-rest-api/internal/repository/sqlconnect"
+	"github.com/gepestudy/go-rest-api/pkg/config"
 )
 
 func main() {
+	if err := config.Load(); err != nil {
+		log.Fatalln(err)
+	}
+	db, err := sqlconnect.ConnectDB()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	defer db.Close()
+
 	cert := "cert.pem"
 	key := "key.pem"
 
@@ -18,7 +29,7 @@ func main() {
 
 	// multiplexer
 	mux := http.NewServeMux()
-	mux = router.InitRouter(mux)
+	mux = router.InitRouter(mux, db)
 
 	tslConfig := &tls.Config{
 		MinVersion: tls.VersionTLS12,

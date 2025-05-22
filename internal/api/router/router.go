@@ -1,12 +1,13 @@
 package router
 
 import (
+	"database/sql"
 	"net/http"
 
 	"github.com/gepestudy/go-rest-api/internal/api/handlers"
 )
 
-func InitRouter(mux *http.ServeMux) *http.ServeMux {
+func InitRouter(mux *http.ServeMux, db *sql.DB) *http.ServeMux {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Hello from Root route!"))
 	})
