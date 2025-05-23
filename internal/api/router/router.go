@@ -11,7 +11,14 @@ func InitRouter(mux *http.ServeMux, db *sql.DB) *http.ServeMux {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Hello from Root route!"))
 	})
-	mux.HandleFunc("/teachers/", handlers.GetTeachersHandler)
+	mux.HandleFunc("/teachers/", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handlers.GetTeachersHandler(w, r, db)
+		case http.MethodPost:
+			handlers.AddTeacherHandler(w, r, db)
+		}
+	})
 	mux.HandleFunc("/students", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Hello from students route!"))
 	})
