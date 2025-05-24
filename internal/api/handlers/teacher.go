@@ -317,3 +317,30 @@ func PatchTeacherHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 	json.NewEncoder(w).Encode(existingTeacher)
 }
+
+func DeleteTeacherHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	idStr := strings.TrimPrefix(r.URL.Path, "/teachers/")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("invalid id"))
+		return
+	}
+
+	stmt, err := db.Prepare("DELETE FROM teachers WHERE id=?")
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("something went wrong"))
+		return
+	}
+	defer stmt.Close()
+	_, err = stmt.Exec(id)
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("something went wrong"))
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}

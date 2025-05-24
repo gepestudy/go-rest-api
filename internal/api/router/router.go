@@ -21,6 +21,8 @@ func InitRouter(mux *http.ServeMux, db *sql.DB) *http.ServeMux {
 			handlers.UpdateTeacherHandler(w, r, db)
 		case http.MethodPatch:
 			handlers.PatchTeacherHandler(w, r, db)
+		case http.MethodDelete:
+			handlers.DeleteTeacherHandler(w, r, db)
 		default:
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}
