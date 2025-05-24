@@ -35,7 +35,7 @@ func main() {
 		MinVersion: tls.VersionTLS12,
 	}
 
-	secureMux := mw.SecurityHeaders(mux)
+	secureMux := mw.SecurityHeaders(mw.ResponseTime(mux))
 	// create server with TLS
 	server := &http.Server{
 		Addr:      fmt.Sprintf(":%d", port),
