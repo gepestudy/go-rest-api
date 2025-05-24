@@ -29,103 +29,100 @@ func isValidSortField(field string) bool {
 }
 
 func GetTeachersHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
-	idStr := strings.TrimPrefix(r.URL.Path, "/teachers/")
+	query := `SELECT id, first_name, last_name, email, class, subject FROM teachers WHERE 1=1`
+	var args []any
 
-	if idStr == "" {
-		query := `SELECT id, first_name, last_name, email, class, subject FROM teachers WHERE 1=1`
-		var args []any
+	query, args = addFilters(r, query, args)
 
-		query, args = addFilters(r, query, args)
+	// /teachers?sortby=first_name:asc,class:desc menjadi [first_name:asc, class:desc] kalo pakai .Get("sortby") bakal nge return string, kalo pakai Query()["xxx"] bakal nge return array of string
+	query = addSorting(r, query)
 
-		// /teachers?sortby=first_name:asc,class:desc menjadi [first_name:asc, class:desc] kalo pakai .Get("sortby") bakal nge return string, kalo pakai Query()["xxx"] bakal nge return array of string
-		query = addSorting(r, query)
-
-		rows, err := db.Query(query, args...)
-		var teacherList []models.Teacher
-		for rows.Next() {
-			var teacher models.Teacher
-			err := rows.Scan(&teacher.ID, &teacher.FirstName, &teacher.LastName, &teacher.Email, &teacher.Class, &teacher.Subject)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte("Failed to scan teacher data"))
-				return
-			}
-			teacherList = append(teacherList, teacher)
-		}
-
-		response := struct {
-			Status string           `json:"status"`
-			Count  int              `json:"count"`
-			Data   []models.Teacher `json:"data"`
-		}{
-			Status: "success",
-			Count:  len(teacherList),
-			Data:   teacherList,
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		err = json.NewEncoder(w).Encode(response)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("something went wrong"))
-			return
-		}
-		return
-	} else {
-		id, err := strconv.Atoi(idStr)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("something went wrong"))
-			return
-		}
-
-		query := `SELECT id, first_name, last_name, email, class, subject FROM teachers WHERE id = ?`
-		stmt, err := db.Prepare(query)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("something went wrong"))
-			return
-		}
-		defer stmt.Close()
-
+	rows, err := db.Query(query, args...)
+	var teacherList []models.Teacher
+	for rows.Next() {
 		var teacher models.Teacher
-		if err := stmt.QueryRow(id).Scan(&teacher.ID, &teacher.FirstName, &teacher.LastName, &teacher.Email, &teacher.Class, &teacher.Subject); err != nil {
-			if err == sql.ErrNoRows {
-				w.WriteHeader(http.StatusNotFound)
-				response := struct {
-					Status string          `json:"status"`
-					Count  int             `json:"count"`
-					Data   *models.Teacher `json:"data"`
-				}{
-					Status: "failed",
-					Count:  0,
-					Data:   nil,
-				}
-				w.Header().Set("Content-Type", "application/json")
-				err = json.NewEncoder(w).Encode(response)
-				return
-			}
-
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("something went wrong"))
-			return
-		}
-		response := struct {
-			Status string         `json:"status"`
-			Count  int            `json:"count"`
-			Data   models.Teacher `json:"data"`
-		}{
-			Status: "success",
-			Count:  1,
-			Data:   teacher,
-		}
-		w.Header().Set("Content-Type", "application/json")
-		err = json.NewEncoder(w).Encode(response)
+		err := rows.Scan(&teacher.ID, &teacher.FirstName, &teacher.LastName, &teacher.Email, &teacher.Class, &teacher.Subject)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("something went wrong"))
+			w.Write([]byte("Failed to scan teacher data"))
 			return
 		}
+		teacherList = append(teacherList, teacher)
+	}
+
+	response := struct {
+		Status string           `json:"status"`
+		Count  int              `json:"count"`
+		Data   []models.Teacher `json:"data"`
+	}{
+		Status: "success",
+		Count:  len(teacherList),
+		Data:   teacherList,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("something went wrong 1"))
+		return
+	}
+}
+
+func GetTeacherHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	idStr := r.PathValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("something went wrong 2"))
+		return
+	}
+
+	query := `SELECT id, first_name, last_name, email, class, subject FROM teachers WHERE id = ?`
+	stmt, err := db.Prepare(query)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("something went wrong 3"))
+		return
+	}
+	defer stmt.Close()
+
+	var teacher models.Teacher
+	if err := stmt.QueryRow(id).Scan(&teacher.ID, &teacher.FirstName, &teacher.LastName, &teacher.Email, &teacher.Class, &teacher.Subject); err != nil {
+		if err == sql.ErrNoRows {
+			w.WriteHeader(http.StatusNotFound)
+			response := struct {
+				Status string          `json:"status"`
+				Count  int             `json:"count"`
+				Data   *models.Teacher `json:"data"`
+			}{
+				Status: "failed",
+				Count:  0,
+				Data:   nil,
+			}
+			w.Header().Set("Content-Type", "application/json")
+			err = json.NewEncoder(w).Encode(response)
+			return
+		}
+
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("something went wrong 4"))
+		return
+	}
+	response := struct {
+		Status string         `json:"status"`
+		Count  int            `json:"count"`
+		Data   models.Teacher `json:"data"`
+	}{
+		Status: "success",
+		Count:  1,
+		Data:   teacher,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("something went wrong 5"))
 		return
 	}
 }
@@ -216,7 +213,7 @@ func AddTeacherHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 
 // PUT /teachers/{id}
 func UpdateTeacherHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
-	idStr := strings.TrimPrefix(r.URL.Path, "/teachers/")
+	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -253,7 +250,7 @@ func UpdateTeacherHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 }
 
 func PatchTeacherHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
-	idStr := strings.TrimPrefix(r.URL.Path, "/teachers/")
+	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -319,9 +316,9 @@ func PatchTeacherHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 }
 
 func DeleteTeacherHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
-	idStr := strings.TrimPrefix(r.URL.Path, "/teachers/")
+	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
-	if err != nil {
+	if err != nil || id <= 0 || idStr == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("invalid id"))
 		return
