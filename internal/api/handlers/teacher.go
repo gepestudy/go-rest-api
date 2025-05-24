@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -172,6 +173,7 @@ func addFilters(r *http.Request, query string, args []any) (string, []any) {
 	return query, args
 }
 
+// POST /teachers
 func AddTeacherHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	var teachers []models.Teacher
 	err := json.NewDecoder(r.Body).Decode(&teachers)
@@ -210,4 +212,108 @@ func AddTeacherHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		teachers[i].ID = int(id)
 	}
 	json.NewEncoder(w).Encode(teachers)
+}
+
+// PUT /teachers/{id}
+func UpdateTeacherHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	idStr := strings.TrimPrefix(r.URL.Path, "/teachers/")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("invalid id"))
+		return
+	}
+
+	var teacher models.Teacher
+	err = json.NewDecoder(r.Body).Decode(&teacher)
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("request body is not valid"))
+		return
+	}
+
+	stmt, err := db.Prepare("UPDATE teachers SET first_name=?, last_name=?, email=?, class=?, subject=? WHERE id=?")
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("something went wrong"))
+		return
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(teacher.FirstName, teacher.LastName, teacher.Email, teacher.Class, teacher.Subject, id)
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("something went wrong"))
+		return
+	}
+	json.NewEncoder(w).Encode(teacher)
+}
+
+func PatchTeacherHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	idStr := strings.TrimPrefix(r.URL.Path, "/teachers/")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("invalid id"))
+		return
+	}
+
+	var existingTeacher models.Teacher
+	stmt, err := db.Prepare("SELECT * FROM teachers WHERE id=?")
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Error preparing query"))
+	}
+	defer stmt.Close()
+
+	err = stmt.QueryRow(id).Scan(&existingTeacher.ID, &existingTeacher.FirstName, &existingTeacher.LastName, &existingTeacher.Email, &existingTeacher.Class, &existingTeacher.Subject)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte("Teacher not found"))
+			return
+		}
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Error retrieving teacher"))
+		return
+	}
+
+	var patchData models.Teacher
+	if err := json.NewDecoder(r.Body).Decode(&patchData); err != nil {
+		http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+		return
+	}
+
+	existingTeacherElem := reflect.ValueOf(&existingTeacher).Elem()
+	patch := reflect.ValueOf(patchData)
+
+	for i := 0; i < patch.NumField(); i++ {
+		field := patch.Field(i)
+		if !field.IsZero() {
+			existingTeacherElem.Field(i).Set(field)
+		}
+	}
+
+	stmt, err = db.Prepare("UPDATE teachers SET first_name=?, last_name=?, email=?, class=?, subject=? WHERE id=?")
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Error preparing query"))
+		return
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(existingTeacher.FirstName, existingTeacher.LastName, existingTeacher.Email, existingTeacher.Class, existingTeacher.Subject, id)
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Error updating teacher"))
+		return
+	}
+	json.NewEncoder(w).Encode(existingTeacher)
 }
